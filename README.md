@@ -1,4 +1,4 @@
-# Burn Ledger v0.9.0
+# Burn Ledger v0.10.0
 
 Local, evidence-aware tracking for AI subscription burn, model discovery, pricing changes, and completed-task yield.
 
@@ -80,6 +80,24 @@ Upload `.csv` or `.jsonl` from the Telemetry screen. Current normalized fields i
 
 Task descriptions are redacted before storage by default.
 
+### Automatic local collection
+
+For adapters that produce files, copy them into `data/telemetry-inbox/`. Burn Ledger
+imports `.csv` and `.jsonl` files on startup and during each automatic sync, deduplicates
+files by content hash, and moves successful imports to `data/telemetry-archive/`.
+Those directories are ignored by Git and are created automatically on a clean install.
+
+For adapters that can call HTTP locally, send one normalized attempt at a time:
+
+```bash
+curl -X POST http://127.0.0.1:8795/api/telemetry/record \
+  -H 'Content-Type: application/json' \
+  -d '{"task_id":"run-001","model_id":"gpt-6.1-sol","task_class":"Tier 2: Standard Engineering","completed":true,"first_pass_success":true,"input_tokens":1200,"output_tokens":500,"wall_clock_seconds":42,"weekly_before_pct":100,"weekly_after_pct":99}'
+```
+
+The file watcher and record endpoint use the same normalization, redaction, metric
+calculation, and provenance tracking as browser imports. Duplicate payloads are ignored.
+
 ## API
 
 FastAPI docs: `http://127.0.0.1:8795/docs`
@@ -99,6 +117,8 @@ Useful endpoints:
 - `PATCH /api/availability/provider/{provider}`
 - `PATCH /api/availability/model/{model_key}`
 - `POST /api/telemetry/import`
+- `POST /api/telemetry/record`
+- `POST /api/telemetry/inbox/scan`
 - `GET /api/metrics`
 - `GET /api/export.json`
 - `GET /api/export.csv`

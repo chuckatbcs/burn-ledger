@@ -21,7 +21,7 @@ from app.services.sources import sync_all_sources, sync_source
 from app.services.availability import (
     current_recommendations, decorate_lanes, decorate_model_rows, provider_states, set_override
 )
-from app.services.telemetry import import_telemetry
+from app.services.telemetry import import_telemetry, import_telemetry_inbox
 from app.services.enrichment import enrich_plan_rows
 from app.services.task_cost import DEFAULT_PROFILE, TASK_PROFILES, decorate_task_cost, profile_meta
 from app.services.tier_recommendations import tier_recommendations
@@ -42,6 +42,7 @@ async def periodic_sync() -> None:
     await asyncio.sleep(3)
     while True:
         try:
+            await asyncio.to_thread(import_telemetry_inbox)
             await run_sync_guarded()
         except Exception:
             pass
@@ -53,6 +54,7 @@ async def periodic_sync() -> None:
 async def lifespan(app: FastAPI):
     init_db()
     seed_all()
+    import_telemetry_inbox()
     task = None if os.getenv("BURN_LEDGER_DISABLE_AUTO_SYNC") == "1" else asyncio.create_task(periodic_sync())
     yield
     if task is not None:
@@ -61,7 +63,7 @@ async def lifespan(app: FastAPI):
             await task
 
 
-APP_VERSION = "0.9.0"
+APP_VERSION = "0.10.0"
 
 app = FastAPI(
     title="Burn Ledger",
@@ -427,6 +429,21 @@ async def telemetry_import(file: UploadFile = File(...), source: str = "Antigrav
         return import_telemetry(data, name, source)
     except Exception as exc:
         raise HTTPException(400, f"Could not import telemetry: {exc}") from exc
+
+
+@app.post("/api/telemetry/record")
+def telemetry_record(record: dict[str, Any], source: str = "local_agent"):
+    """Accept one task attempt from a local adapter without requiring a file."""
+    try:
+        payload = (json.dumps(record, separators=(",", ":")) + "\n").encode("utf-8")
+        return import_telemetry(payload, "single-record.jsonl", source=source)
+    except Exception as exc:
+        raise HTTPException(400, f"Could not record telemetry: {exc}") from exc
+
+
+@app.post("/api/telemetry/inbox/scan")
+def telemetry_inbox_scan():
+    return import_telemetry_inbox()
 
 
 @app.get("/api/telemetry/runs")

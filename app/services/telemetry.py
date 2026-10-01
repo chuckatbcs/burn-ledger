@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
+import shutil
 from collections import defaultdict
 from typing import Any
 
-from app.db import connect, get_setting, utcnow
+from app.db import DATA_DIR, TELEMETRY_ARCHIVE_DIR, TELEMETRY_INBOX_DIR, connect, get_setting, utcnow
 
 
 def _bool(v: Any) -> bool:
@@ -83,22 +85,61 @@ def _pool_name(raw: str | None) -> str | None:
 
 def import_telemetry(data: bytes, filename: str, source: str = "Antigravity") -> dict[str, Any]:
     rows = parse_bytes(data, filename)
+    content_hash = hashlib.sha256(data).hexdigest()
     redact = bool(get_setting("telemetry_redact_descriptions", True))
     now = utcnow()
     with connect() as conn:
+        existing = conn.execute(
+            "SELECT id, row_count FROM telemetry_runs WHERE content_hash=?",
+            (content_hash,),
+        ).fetchone()
+        if existing:
+            return {"run_id": existing["id"], "rows": existing["row_count"], "metrics": [], "skipped": True}
         run_id = conn.execute(
-            "INSERT INTO telemetry_runs(imported_at,source,file_name,row_count,schema_version,notes) VALUES(?,?,?,?,?,?)",
-            (now,source,filename,len(rows),"normalized-v1","Descriptions redacted" if redact else "Descriptions retained"),
+            "INSERT INTO telemetry_runs(imported_at,source,file_name,row_count,schema_version,notes,content_hash) VALUES(?,?,?,?,?,?,?)",
+            (now,source,filename,len(rows),"normalized-v1","Descriptions redacted" if redact else "Descriptions retained",content_hash),
         ).lastrowid
         for r in rows:
             description = None if redact else r["description"]
+            stored_row = dict(r)
+            if redact:
+                stored_row["description"] = None
             conn.execute(
                 """INSERT INTO telemetry_attempts(run_id,task_id,matched_pair_id,task_class,model_id,reasoning,quota_pool,five_hour_before_pct,five_hour_after_pct,weekly_before_pct,weekly_after_pct,completed,first_pass_success,attempt_number,tool_calls,agent_steps,input_tokens,cache_tokens,output_tokens,wall_clock_seconds,telemetry_fidelity,subagent_id,description,raw_json)
                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (run_id,r["task_id"],r["matched_pair_id"],r["task_class"],r["model_id"],r["reasoning"],r["quota_pool"],r["five_hour_before_pct"],r["five_hour_after_pct"],r["weekly_before_pct"],r["weekly_after_pct"],int(r["completed"]),int(r["first_pass_success"]),r["attempt_number"],r["tool_calls"],r["agent_steps"],r["input_tokens"],r["cache_tokens"],r["output_tokens"],r["wall_clock_seconds"],r["telemetry_fidelity"],r["subagent_id"],description,json.dumps(r,sort_keys=True)),
+                (run_id,r["task_id"],r["matched_pair_id"],r["task_class"],r["model_id"],r["reasoning"],r["quota_pool"],r["five_hour_before_pct"],r["five_hour_after_pct"],r["weekly_before_pct"],r["weekly_after_pct"],int(r["completed"]),int(r["first_pass_success"]),r["attempt_number"],r["tool_calls"],r["agent_steps"],r["input_tokens"],r["cache_tokens"],r["output_tokens"],r["wall_clock_seconds"],r["telemetry_fidelity"],r["subagent_id"],description,json.dumps(stored_row,sort_keys=True)),
             )
     computed = compute_metrics(rows, source_label=f"import:{filename}")
     return {"run_id": run_id, "rows": len(rows), "metrics": computed}
+
+
+def import_telemetry_inbox() -> dict[str, Any]:
+    """Import local drop-folder files and archive successful files."""
+    TELEMETRY_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    TELEMETRY_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    imported: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    for path in sorted(TELEMETRY_INBOX_DIR.iterdir()):
+        if not path.is_file() or path.suffix.lower() not in {".csv", ".jsonl"}:
+            continue
+        try:
+            result = import_telemetry(path.read_bytes(), path.name, source="local_drop_folder")
+            archive_name = f"{utcnow().replace(':', '').replace('+00:00', 'Z')}__{path.name}"
+            archive_path = TELEMETRY_ARCHIVE_DIR / archive_name
+            shutil.move(str(path), str(archive_path))
+            try:
+                recorded_path = str(archive_path.relative_to(DATA_DIR))
+            except ValueError:
+                recorded_path = str(archive_path)
+            with connect() as conn:
+                conn.execute(
+                    "UPDATE telemetry_runs SET source_path=? WHERE id=?",
+                    (recorded_path, result["run_id"]),
+                )
+            imported.append({"file": path.name, **result})
+        except Exception as exc:
+            errors.append({"file": path.name, "error": f"{type(exc).__name__}: {exc}"})
+    return {"imported": imported, "errors": errors, "count": len(imported)}
 
 
 def compute_metrics(rows: list[dict[str, Any]], source_label: str) -> list[dict[str, Any]]:

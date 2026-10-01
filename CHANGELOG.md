@@ -1,3 +1,10 @@
+## 0.10.0
+
+- Added automatic local telemetry collection from `data/telemetry-inbox/`.
+- Added deduplication, archive handling, provenance paths, and single-record ingestion.
+- Ensured redacted telemetry descriptions are also removed from stored raw JSON.
+- Made clean installs create runtime directories automatically.
+
 ## 0.9.0 — 2026-09-30
 
 - Added official OpenAI GPT-6.1 Sol, GPT-6 Astra, and GPT-6 Luna catalog/pricing evidence; retained GPT-6 Sol as explicitly superseded historical data.

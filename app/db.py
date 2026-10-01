@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-DB_PATH = Path(os.getenv("BURN_LEDGER_DB", Path(__file__).resolve().parents[1] / "data" / "burn-ledger.db"))
+DATA_DIR = Path(os.getenv("BURN_LEDGER_DATA_DIR", Path(__file__).resolve().parents[1] / "data"))
+DB_PATH = Path(os.getenv("BURN_LEDGER_DB", DATA_DIR / "burn-ledger.db"))
+TELEMETRY_INBOX_DIR = Path(os.getenv("BURN_LEDGER_TELEMETRY_INBOX", DATA_DIR / "telemetry-inbox"))
+TELEMETRY_ARCHIVE_DIR = Path(os.getenv("BURN_LEDGER_TELEMETRY_ARCHIVE", DATA_DIR / "telemetry-archive"))
 
 
 def utcnow() -> str:
@@ -18,6 +21,8 @@ def utcnow() -> str:
 @contextmanager
 def connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    TELEMETRY_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    TELEMETRY_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -159,7 +164,9 @@ def init_db() -> None:
       file_name TEXT,
       row_count INTEGER NOT NULL,
       schema_version TEXT,
-      notes TEXT
+      notes TEXT,
+      content_hash TEXT,
+      source_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS telemetry_attempts (
@@ -253,6 +260,15 @@ def init_db() -> None:
             conn.execute("ALTER TABLE telemetry_attempts ADD COLUMN telemetry_fidelity TEXT NOT NULL DEFAULT 'unknown'")
         if "subagent_id" not in telemetry_columns:
             conn.execute("ALTER TABLE telemetry_attempts ADD COLUMN subagent_id TEXT")
+        run_columns = {row["name"] for row in conn.execute("PRAGMA table_info(telemetry_runs)").fetchall()}
+        if "content_hash" not in run_columns:
+            conn.execute("ALTER TABLE telemetry_runs ADD COLUMN content_hash TEXT")
+        if "source_path" not in run_columns:
+            conn.execute("ALTER TABLE telemetry_runs ADD COLUMN source_path TEXT")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_runs_hash "
+            "ON telemetry_runs(content_hash) WHERE content_hash IS NOT NULL"
+        )
         catalog_columns = {row["name"] for row in conn.execute("PRAGMA table_info(model_catalog)").fetchall()}
         for name, definition in {
             "lifecycle_status": "TEXT NOT NULL DEFAULT 'active'",

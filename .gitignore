@@ -4,6 +4,10 @@ __pycache__/
 *.pyc
 data/*.db
 data/*.db-*
+data/telemetry-inbox/*
+!data/telemetry-inbox/.gitkeep
+data/telemetry-archive/*
+!data/telemetry-archive/.gitkeep
 *.sqlite
 *.log
 premium-audit.json

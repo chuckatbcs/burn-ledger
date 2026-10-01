@@ -62,6 +62,41 @@ def test_normalize_quantized_quota_without_token_counts():
     assert row["subagent_id"] == "worker-2"
 
 
+def test_telemetry_drop_folder_archives_deduplicates_and_redacts(tmp_path, monkeypatch):
+    import json
+    from app.services import telemetry
+
+    inbox = tmp_path / "inbox"
+    archive = tmp_path / "archive"
+    inbox.mkdir()
+    archive.mkdir()
+    monkeypatch.setattr(telemetry, "TELEMETRY_INBOX_DIR", inbox)
+    monkeypatch.setattr(telemetry, "TELEMETRY_ARCHIVE_DIR", archive)
+    task_id = "clean-install-drop-test"
+    (inbox / "drop-test.jsonl").write_text(json.dumps({
+        "task_id": task_id,
+        "task_class": "Tier 2: Standard Engineering",
+        "model_id": "gpt-6.1-sol",
+        "completed": True,
+        "first_pass_success": True,
+        "description": "private task description",
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "weekly_before_pct": 100,
+        "weekly_after_pct": 99,
+    }) + "\n", encoding="utf-8")
+
+    first = telemetry.import_telemetry_inbox()
+    second = telemetry.import_telemetry_inbox()
+    assert first["count"] == 1
+    assert second["count"] == 0
+    assert len(list(archive.iterdir())) == 1
+    stored = query("SELECT description,raw_json,source_path FROM telemetry_attempts JOIN telemetry_runs ON telemetry_runs.id=telemetry_attempts.run_id WHERE task_id=?", (task_id,))[0]
+    assert stored["description"] is None
+    assert "private task description" not in stored["raw_json"]
+    assert stored["source_path"].endswith("__drop-test.jsonl")
+
+
 def test_telemetry_provenance_columns_migrate_in_place():
     cols = {x["name"] for x in query("PRAGMA table_info(telemetry_attempts)")}
     assert {"telemetry_fidelity", "subagent_id"}.issubset(cols)
