@@ -506,7 +506,9 @@ def patch_settings(patch: SettingsPatch):
 def classify_workload_endpoint(prompt: str | None = None, dir: str | None = None):
     import sys
     import os
-    tracker_dir = "/home/chuck/.gemini/antigravity/scratch/ai-burn-rate-tracker"
+    tracker_dir = os.environ.get("OMNIBURN_DIR")
+    if not tracker_dir:
+        raise HTTPException(503, "OmniBurn classifier is not configured; set OMNIBURN_DIR")
     if tracker_dir not in sys.path:
         sys.path.insert(0, tracker_dir)
     from engine.classifier import classify_workload
@@ -516,4 +518,3 @@ def classify_workload_endpoint(prompt: str | None = None, dir: str | None = None
 @app.exception_handler(Exception)
 async def unhandled(_request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": f"Internal error: {type(exc).__name__}"})
-
