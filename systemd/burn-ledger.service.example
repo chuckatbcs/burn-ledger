@@ -1,0 +1,15 @@
+[Unit]
+Description=Burn Ledger AI subscription burn tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/burn-ledger
+ExecStart=%h/burn-ledger/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8795
+Restart=on-failure
+RestartSec=5
+Environment=BURN_LEDGER_DB=%h/burn-ledger/data/burn-ledger.db
+
+[Install]
+WantedBy=default.target

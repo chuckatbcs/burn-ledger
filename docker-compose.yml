@@ -1,0 +1,12 @@
+services:
+  burn-ledger:
+    build: .
+    container_name: burn-ledger
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8795:8795"
+    volumes:
+      - ./data:/data
+    environment:
+      BURN_LEDGER_DB: /data/burn-ledger.db
+      BURN_LEDGER_SYNC_INTERVAL_MINUTES: "360"

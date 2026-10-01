@@ -1,0 +1,2 @@
+task_id,matched_pair_id,task_class,model_id,reasoning,quota_pool,five_hour_before_pct,five_hour_after_pct,weekly_before_pct,weekly_after_pct,completed,first_pass_success,attempt_number,tool_calls,agent_steps,input_tokens,cache_tokens,output_tokens,wall_clock_seconds,sanitized_description
+sample-1,pair-1,Tier 2: Standard Engineering,gemini-3.8-flash-medium,medium,gemini_models,100,100,100,100,true,true,1,3,6,6000,1000,900,62,example task

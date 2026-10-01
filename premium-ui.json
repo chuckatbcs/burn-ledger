@@ -1,0 +1,26 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": [
+    "app/static"
+  ],
+  "locale": "en-US",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Select/Listbox",
+    "Form",
+    "Scrollbar",
+    "Toast"
+  ],
+  "requiredCommands": [
+    "unit"
+  ],
+  "commands": {
+    "unit": "pytest -q"
+  },
+  "evidence": {
+    "failurePaths": "tests/test_core.py"
+  },
+  "ownership": {
+    "Select/Listbox": "native"
+  }
+}

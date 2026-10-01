@@ -1,0 +1,187 @@
+{
+  "product": "Burn Ledger",
+  "version": "0.9.0",
+  "generated": "2026-09-30",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 82,
+      "sha256": "f72c3be36177aa582cc84a5f1f6622e11b14ea7428f44a80ac54abf8f9de9e94"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 7548,
+      "sha256": "8338eaf00604b3645fd6d4d0448d5c517dfb2301dbc3ea0a7010509f2c64af4b"
+    },
+    {
+      "path": "DESIGN.md",
+      "bytes": 3545,
+      "sha256": "379df97c75064aa2d029c88681f77d5e1de3819c8271e83f32edde90f3e90514"
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 263,
+      "sha256": "e702389eecf8645c0f2b92a70def1fac38d5dd28e6d143c5481ffb04103dbd10"
+    },
+    {
+      "path": "PRODUCT.md",
+      "bytes": 4284,
+      "sha256": "d1f58a8a099f4c30d850759c12dd636f7f619a8fc7b90d0f1bfd9ba1019d1db0"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9753,
+      "sha256": "4bf627a0f7e91052af7d1141a992843996b1404f297b0fc6c0b985721c9b6777"
+    },
+    {
+      "path": "SOURCE_REGISTRY.md",
+      "bytes": 2970,
+      "sha256": "bd85c33824be03eeddb71301cccd33b4f0f30a6a4846b232e4bbc1e1fdb02294"
+    },
+    {
+      "path": "UX-CONTRACT.md",
+      "bytes": 7006,
+      "sha256": "ca96d7abb57a16472045d1d86b26f6423748b3cc6e16ca027b2aeae9d8276e58"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 1796,
+      "sha256": "f0e2e15e1d9d8c3148a413cec0fcb04cab1b98df12a8e71444bf8253109eff1d"
+    },
+    {
+      "path": "VERSION",
+      "bytes": 6,
+      "sha256": "9d8c94f1ad3ea96b1e2ac4914fda4cb93c76b4a3e0d8cc6dd8976d6c0b227d15"
+    },
+    {
+      "path": "app/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/db.py",
+      "bytes": 10841,
+      "sha256": "7b7a9c290a4c617267bb32bd235f1ac107cc57462d4119a52c854064c73c16f6"
+    },
+    {
+      "path": "app/main.py",
+      "bytes": 21064,
+      "sha256": "b2a773df4a0231dc732b7b77925b68e93027c80341da1ddd7a92cf03896cd586"
+    },
+    {
+      "path": "app/seed.py",
+      "bytes": 21374,
+      "sha256": "23b73ea79030f953c99cd094f99f3c22eb3dc363913b2a81ef2fffae68d673e8"
+    },
+    {
+      "path": "app/services/__init__.py",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/services/availability.py",
+      "bytes": 8871,
+      "sha256": "5947e2c5f303fbf4bf72ca5b0f69dd9f1d45959a9f3b6c1e7c343c13b5229ff6"
+    },
+    {
+      "path": "app/services/catalog.py",
+      "bytes": 13722,
+      "sha256": "9a6cc65884e1967638f4740c54f64fd57a5d8a32d0b455d8ce8d0015398a0bee"
+    },
+    {
+      "path": "app/services/enrichment.py",
+      "bytes": 5153,
+      "sha256": "69637bf77c9db946c85943ec0a8e041e1169983661ee3732e3019d2fa0c75586"
+    },
+    {
+      "path": "app/services/sources.py",
+      "bytes": 18771,
+      "sha256": "09f7e5f85a0e90a21fa3591e59f621b6f95ec2eb05d76866d191c86b045a674d"
+    },
+    {
+      "path": "app/services/task_cost.py",
+      "bytes": 3936,
+      "sha256": "735291ed06120b477ca858498f84c2eb72be42e37f268eef62b2e3b8837a0a34"
+    },
+    {
+      "path": "app/services/telemetry.py",
+      "bytes": 8806,
+      "sha256": "0c5c6332b81560ebf80da50e07df6f87a5407d014ab7a225f148d525bd567814"
+    },
+    {
+      "path": "app/services/tier_recommendations.py",
+      "bytes": 20518,
+      "sha256": "b641996485901469faf1813027b9b23642ef72602796e7993e429273689b6a1d"
+    },
+    {
+      "path": "app/static/app.js",
+      "bytes": 35867,
+      "sha256": "1a269f17ba45ddc77a08a5a7549edafb549a26cc970c55a052eea5487b906e21"
+    },
+    {
+      "path": "app/static/index.html",
+      "bytes": 10914,
+      "sha256": "580fb2c9a3c58b179ef3e42bc358b14c3722e5527d82b1f15a2a1f21630e6c33"
+    },
+    {
+      "path": "app/static/styles.css",
+      "bytes": 24999,
+      "sha256": "df7bcb268911e56fa33a6c80934eee571403a793f87d55aca1b63b24abfe0712"
+    },
+    {
+      "path": "data/.gitkeep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docker-compose.yml",
+      "bytes": 280,
+      "sha256": "7c07196471b82888c37db49ed88354c2717a93aded761e2993e1b38e8d905a31"
+    },
+    {
+      "path": "premium-ui.json",
+      "bytes": 427,
+      "sha256": "83a3c77835da9db56b02326ce30cf508ad21bad1c718f66bb3f1a27d185362fa"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 433,
+      "sha256": "1398f5aa2b0e131182dfa4f8651916813fd7a88bd439e26a066ccaf4b8a540b4"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 118,
+      "sha256": "8ad1425c8e692ac1ae2e992443f21e842436e21f457ffd0f8e7c2c42ecc6e0ff"
+    },
+    {
+      "path": "samples/telemetry_minimal.csv",
+      "bytes": 441,
+      "sha256": "43939911ffcdb3fe61b6e1c71a63e63d9b5f6d2fb02cf67699efa4fa918b38d4"
+    },
+    {
+      "path": "start.ps1",
+      "bytes": 319,
+      "sha256": "ec3b6ba3edcd8b19421d97cec2faa876df03c3978cc9855d61896742544dfc22"
+    },
+    {
+      "path": "start.sh",
+      "bytes": 281,
+      "sha256": "e9aae6a662915d6614c5b0d77b90156d84e2ee9938df9ae02b819ff55b70ea74"
+    },
+    {
+      "path": "systemd/burn-ledger.service.example",
+      "bytes": 385,
+      "sha256": "1cfba0164a4d42a916452678bbb88cfdcc226aef16b478f35549ca88db416ba8"
+    },
+    {
+      "path": "tests/conftest.py",
+      "bytes": 143,
+      "sha256": "3f96e26e31bc631d224113ae76727818c62b3fa1d50cb5f4bb870aad82224da6"
+    },
+    {
+      "path": "tests/test_core.py",
+      "bytes": 23040,
+      "sha256": "9e56a1fc0f9a3a33030a9d9228e97e249446eeff03acf33f34e768f5d5c31f55"
+    }
+  ]
+}

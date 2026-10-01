@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Burn Ledger — AI subscription burn tracker</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h1>Burn Ledger</h1>
+            <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:5px; font-size:10px; font-weight:700; font-family:var(--mono); background:rgba(75,180,201,0.15); color:var(--cyan); border:1px solid rgba(75,180,201,0.3); text-transform:uppercase; letter-spacing:0.06em;">Built by Codex</span>
+          </div>
+          <p>Evidence-aware AI subscription yield</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div id="syncState" class="sync-state" role="status" aria-live="polite">Ready</div>
+        <button id="syncBtn" class="button button-primary" type="button">Sync sources</button>
+      </div>
+    </header>
+
+    <nav class="section-tabs" aria-label="Burn Ledger sections">
+      <button class="tab is-active" data-view="overview" aria-selected="true">Overview</button>
+      <button class="tab" data-view="models" aria-selected="false">Model catalog</button>
+      <button class="tab" data-view="sources" aria-selected="false">Source watch</button>
+      <button class="tab" data-view="telemetry" aria-selected="false">Telemetry</button>
+      <button class="tab" data-view="settings" aria-selected="false">Settings</button>
+    </nav>
+
+    <main id="main">
+      <section id="view-overview" class="view is-visible" aria-labelledby="overview-title">
+        <div class="view-heading overview-heading">
+          <div><p class="eyebrow">Decision desk</p><h2 id="overview-title">What should I use?</h2><p class="subcopy">Three practical choices for each workload tier. Every pick shows weekly subscription quota burn and API cost for the same generalized completed task; the selector changes only which metric ranks the Top 3.</p></div>
+          <div class="view-meta"><span id="lastSync">No sync yet</span></div>
+        </div>
+
+        <section class="panel recommendation-board">
+          <div class="panel-head recommendation-head"><div><p class="eyebrow">Recommended rotation</p><h3>Top 3 models by task type</h3></div><div class="recommendation-controls"><div id="recommendationBasisToggle" class="segmented-control" role="group" aria-label="Recommendation cost basis"><button class="segment is-active" type="button" data-recommendation-basis="api" aria-pressed="true">API $ / task</button><button class="segment" type="button" data-recommendation-basis="quota" aria-pressed="false">Lowest weekly quota burn</button></div><span class="badge badge-official">cost-first after fit</span></div></div>
+          <p id="recommendationBasis" class="recommendation-basis">Loading recommendation basis…</p>
+          <div id="tierRecommendationGrid" class="tier-recommendation-grid" aria-live="polite"></div>
+        </section>
+
+        <div id="overviewInsightGrid" class="overview-insight-grid" aria-label="Overview signals"></div>
+
+        <div class="split-grid overview-lower-grid">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Recommendation quality</p><h3>What could change the Top 3</h3></div><span id="recommendationCoverageBadge" class="badge badge-measured">evidence</span></div>
+            <div id="recommendationNotes" class="recommendation-notes"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Watch desk</p><h3>Changes needing attention</h3></div><div class="head-actions"><span id="changeCount" class="count-chip">0</span><button id="dismissAllChanges" class="button button-ghost button-small" type="button">Dismiss all</button></div></div>
+            <div id="changeFeed" class="change-feed overview-change-feed"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-models" class="view" aria-labelledby="models-title">
+        <div class="view-heading">
+          <div><p class="eyebrow">Automatic discovery</p><h2 id="models-title">Model catalog</h2><p class="subcopy">Catalog entries update automatically. In My plan models, context and $/M economics are enriched across official/provider catalogs; these token prices are reference economics, not subscription burn.</p></div>
+          <div class="catalog-count"><strong id="catalogCount">0</strong><span>active models</span></div>
+        </div>
+        <section class="panel availability-panel" id="availabilityPanel">
+          <div class="panel-head"><div><p class="eyebrow">Routing availability</p><h3>Providers in rotation</h3></div><span class="muted">Turn off a provider without deleting evidence.</span></div>
+          <div id="providerToggles" class="provider-toggles" aria-live="polite"></div>
+        </section>
+        <section class="panel">
+          <div class="filter-row catalog-filters">
+            <label class="search-field"><span>Search catalog</span><div class="search-control"><input id="modelSearch" type="search" autocomplete="off" placeholder="Model name or ID"/><button id="clearSearch" class="icon-button" type="button" aria-label="Clear model search">×</button></div></label>
+            <label><span>Scope</span><select id="modelScope"><option value="plan">My plan models</option><option value="official">Official parsed catalogs</option><option value="all">All discovered models</option></select></label>
+            <label><span>Provider</span><select id="providerFilter"><option value="">All providers</option></select></label>
+            <label><span>Source / plan</span><select id="sourceFilter"><option value="">All sources / plans</option></select></label>
+            <label><span>Task profile</span><select id="taskProfile"><option value="micro">Micro · ~1k</option><option value="standard" selected>Standard · ~10k</option><option value="long_horizon">Long-horizon · ~50k</option><option value="massive_context">Massive context · ~300k long band</option></select></label>
+            <label><span>Rows</span><select id="pageSize"><option>25</option><option selected>50</option><option>100</option></select></label>
+          </div>
+          <div class="catalog-meta"><span id="catalogResultCount">0 results</span><span id="catalogSortState">Sorted by provider</span></div><p id="taskCostBasis" class="catalog-cost-basis">Cost/task uses the selected reference workload and current token economics. It is not subscription cost/task.</p>
+          <div id="modelsTableWrap" class="table-wrap"></div>
+          <div class="pagination" aria-label="Model catalog pagination"><button id="prevPage" class="button button-outline button-small" type="button">Previous</button><span id="pageStatus">Page 1 of 1</span><button id="nextPage" class="button button-outline button-small" type="button">Next</button></div>
+        </section>
+      </section>
+
+      <section id="view-sources" class="view" aria-labelledby="sources-title">
+        <div class="view-heading"><div><p class="eyebrow">Evidence layer</p><h2 id="sources-title">Source watch</h2><p class="subcopy">Official sources are operational watchers. Failures show their real error and can be retried or paused without erasing last-known-good evidence.</p></div></div>
+        <section class="panel"><div id="sourcesTableWrap" class="table-wrap"></div></section>
+      </section>
+
+      <section id="view-telemetry" class="view" aria-labelledby="telemetry-title">
+        <div class="view-heading"><div><p class="eyebrow">Observed usage</p><h2 id="telemetry-title">Import telemetry</h2><p class="subcopy">CSV and JSONL are normalized into matched-task metrics. Descriptions are redacted by default.</p></div></div>
+        <div class="split-grid telemetry-layout">
+          <section class="panel upload-panel">
+            <form id="uploadForm" novalidate>
+              <label for="telemetryFile">Telemetry file</label>
+              <input id="telemetryFile" type="file" accept=".csv,.jsonl,text/csv,application/json" required />
+              <p class="field-help">Supported fields include task_id, matched_pair_id, task_class, model_id, quota before/after, attempts, tokens, steps and wall-clock seconds.</p>
+              <button id="uploadBtn" class="button button-primary" type="submit">Import telemetry</button>
+            </form>
+            <div id="uploadResult" class="result-box" role="status" aria-live="polite">No import in this session.</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">History</p><h3>Telemetry runs</h3></div></div>
+            <div id="telemetryRuns"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view" aria-labelledby="settings-title">
+        <div class="view-heading"><div><p class="eyebrow">Local policy</p><h2 id="settings-title">Settings</h2><p class="subcopy">Burn Ledger keeps subscription evidence local and binds to localhost by default.</p></div></div>
+        <div class="split-grid">
+          <section class="panel">
+            <form id="settingsForm" novalidate>
+              <label for="syncInterval"><span>Automatic sync interval</span><input id="syncInterval" type="number" min="15" max="10080" step="15" inputmode="numeric" /><small>Minutes. Minimum 15.</small></label>
+              <label class="check-row"><input id="redactDescriptions" type="checkbox"/><span><strong>Redact telemetry descriptions</strong><small>Store task metadata but omit task descriptions from imported rows.</small></span></label>
+              <button class="button button-primary" type="submit">Save settings</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Portability</p><h3>Export</h3></div></div>
+            <p class="subcopy">Export the full tracker state or the measurement table for another agent or analysis pass.</p>
+            <div class="button-row"><a class="button button-outline" href="/api/export.json">Export JSON</a><a class="button button-outline" href="/api/export.csv">Export metrics CSV</a><a class="button button-ghost" href="/docs" target="_blank" rel="noreferrer">Open API docs</a></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script src="/static/app.js?v=0.9.2" defer></script>
+</body>
+</html>
