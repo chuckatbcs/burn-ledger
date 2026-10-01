@@ -76,7 +76,7 @@ def test_telemetry_drop_folder_archives_deduplicates_and_redacts(tmp_path, monke
     (inbox / "drop-test.jsonl").write_text(json.dumps({
         "task_id": task_id,
         "task_class": "Tier 2: Standard Engineering",
-        "model_id": "gpt-6.1-sol",
+        "model_id": "dummy-test-model",
         "completed": True,
         "first_pass_success": True,
         "description": "private task description",

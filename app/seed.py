@@ -158,3 +158,83 @@ def seed_all() -> None:
     if get_setting("telemetry_redact_descriptions") is None:
         set_setting("telemetry_redact_descriptions", True)
     _seed_official_catalog_baseline()
+    discover_local_environment()
+
+
+def discover_local_environment() -> None:
+    """Discovers local tool ecosystems (Ollama, Antigravity CLI) and records them in the database."""
+    now = utcnow()
+    # 1. Local Ollama discovery
+    ollama_models: list[tuple[str, str, int]] = []
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://127.0.0.1:11434/api/tags", headers={"User-Agent": "BurnLedger/1.0"})
+        with urllib.request.urlopen(req, timeout=1.5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+            for m in data.get("models", []):
+                name = m.get("name", "")
+                if not name:
+                    continue
+                details = m.get("details", {})
+                param_size = details.get("parameter_size", "")
+                ctx = details.get("context_length", 131072) or 131072
+                display_name = f"{name} (Local {param_size})" if param_size else f"{name} (Local)"
+                ollama_models.append((f"ollama/{name}", display_name, int(ctx)))
+    except Exception:
+        pass
+
+    with connect() as conn:
+        if ollama_models:
+            conn.execute(
+                """INSERT INTO subscriptions(provider,plan_name,monthly_price,currency,evidence_status,created_at,updated_at)
+                   VALUES('Ollama','Localhost Open Weights',0.0,'USD','local_environment',?,?)
+                   ON CONFLICT(provider,plan_name) DO NOTHING""",
+                (now, now),
+            )
+            ollama_sub = conn.execute("SELECT id FROM subscriptions WHERE provider='Ollama' AND plan_name='Localhost Open Weights'").fetchone()
+            if ollama_sub:
+                sub_id = ollama_sub["id"]
+                conn.execute(
+                    """INSERT INTO quota_pools(subscription_id,name,reset_window,evidence_status)
+                       VALUES(?,'Local GPU/CPU Inference','unmetered','local_environment')
+                       ON CONFLICT(subscription_id,name) DO NOTHING""",
+                    (sub_id,),
+                )
+                pool = conn.execute("SELECT id FROM quota_pools WHERE subscription_id=? AND name='Local GPU/CPU Inference'", (sub_id,)).fetchone()
+                if pool:
+                    pool_id = pool["id"]
+                    for model_key, display_name, ctx in ollama_models:
+                        conn.execute(
+                            """INSERT OR IGNORE INTO harness_models(subscription_id,quota_pool_id,model_key,model_display_name,reasoning,speed,entitlement_status,source_evidence,last_verified)
+                               VALUES(?,?,?,?,'default','fast','local_detected','discovered via local Ollama endpoint',?)""",
+                            (sub_id, pool_id, model_key, display_name, now),
+                        )
+
+        # 2. Local Antigravity CLI discovery
+        try:
+            import subprocess
+            import re
+            out = subprocess.check_output(["agy", "models"], stderr=subprocess.PIPE, timeout=4).decode("utf-8")
+            antigravity_sub = conn.execute("SELECT id FROM subscriptions WHERE provider='Google' AND plan_name LIKE '%Antigravity%'").fetchone()
+            if antigravity_sub:
+                sub_id = antigravity_sub["id"]
+                gem_pool = conn.execute("SELECT id FROM quota_pools WHERE subscription_id=? AND name LIKE '%Gemini%'", (sub_id,)).fetchone()
+                claude_pool = conn.execute("SELECT id FROM quota_pools WHERE subscription_id=? AND name LIKE '%Claude%'", (sub_id,)).fetchone()
+                for line in out.splitlines():
+                    line = re.sub(r'^[⠋⠙⠹⠸⠼⠴⠦⠧⠇\s]*Fetching available models\.\.\.', '', line).strip()
+                    if not line:
+                        continue
+                    parts = re.split(r'\t+|\s{2,}', line)
+                    if len(parts) >= 2:
+                        model_key = parts[0].strip()
+                        display_name = parts[1].strip()
+                        target_pool = gem_pool["id"] if ("gemini" in model_key and gem_pool) else (claude_pool["id"] if claude_pool else None)
+                        if target_pool:
+                            conn.execute(
+                                """INSERT OR IGNORE INTO harness_models(subscription_id,quota_pool_id,model_key,model_display_name,reasoning,speed,entitlement_status,source_evidence,last_verified)
+                                   VALUES(?,?,?,?,'default','standard','local_detected','discovered via agy models CLI',?)""",
+                                (sub_id, target_pool, model_key, display_name, now),
+                            )
+        except Exception:
+            pass
+
