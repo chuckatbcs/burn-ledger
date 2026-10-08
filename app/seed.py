@@ -24,6 +24,7 @@ def _seed_official_catalog_baseline() -> None:
         CatalogModel(source="official_baseline", external_id="composer-2-5", provider="Cursor", display_name="Composer 2.5", context_window=200_000, input_per_million=0.5, cache_read_per_million=0.2, output_per_million=2.5, source_url="https://prod.cursor.com/docs/models/cursor-composer-2-5"),
         CatalogModel(source="official_baseline", external_id="claude-fable-5-1-high", provider="Anthropic", display_name="Claude Fable 5.1 High", context_window=300_000, input_per_million=10.0, cache_write_per_million=12.5, cache_read_per_million=0.25, output_per_million=50.0, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/claude-fable-5-1"),
         CatalogModel(source="official_baseline", external_id="claude-opus-5-5-medium", provider="Anthropic", display_name="Claude Opus 5.5 Medium", context_window=300_000, input_per_million=4.0, cache_write_per_million=5.0, cache_read_per_million=0.2, output_per_million=20.0, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/claude-opus-5-5"),
+        CatalogModel(source="official_baseline", external_id="claude-sonnet-5-5-medium", provider="Anthropic", display_name="Claude Sonnet 5.5 Medium", context_window=300_000, input_per_million=2.0, cache_write_per_million=2.5, cache_read_per_million=0.2, output_per_million=10.0, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/claude-sonnet-5-5"),
         CatalogModel(source="official_baseline", external_id="claude-sonnet-5-high", provider="Anthropic", display_name="Claude Sonnet 5 High", context_window=200_000, input_per_million=2.0, cache_write_per_million=2.5, cache_read_per_million=0.2, output_per_million=10.0, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/claude-sonnet-5"),
         CatalogModel(source="official_baseline", external_id="grok-4-7-high", provider="xAI", display_name="Grok 4.7 High", context_window=256_000, input_per_million=2.0, cache_read_per_million=0.5, output_per_million=6.0, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/grok-4-7"),
         CatalogModel(source="official_baseline", external_id="gemini-3-8-flash-high", provider="Google", display_name="Gemini 3.8 Flash High", context_window=200_000, input_per_million=0.75, cache_read_per_million=0.075, output_per_million=3.5, reasoning_supported=True, source_url="https://prod.cursor.com/docs/models/gemini-3-8-flash"),
@@ -206,20 +207,30 @@ def discover_local_environment() -> None:
                     for model_key, display_name, ctx in ollama_models:
                         conn.execute(
                             """INSERT OR IGNORE INTO harness_models(subscription_id,quota_pool_id,model_key,model_display_name,reasoning,speed,entitlement_status,source_evidence,last_verified)
-                               VALUES(?,?,?,?,'default','fast','local_detected','discovered via local Ollama endpoint',?)""",
+                                VALUES(?,?,?,?,'default','fast','local_detected','discovered via local Ollama endpoint',?)""",
                             (sub_id, pool_id, model_key, display_name, now),
                         )
+
+            # Check if any previously discovered Ollama model was removed
+            ollama_active_keys = {m[0] for m in ollama_models}
+            for r in conn.execute("SELECT id, model_key, lifecycle_status FROM harness_models WHERE subscription_id=?", (sub_id,)).fetchall():
+                if r["model_key"] not in ollama_active_keys and r["lifecycle_status"] == "active":
+                    conn.execute(
+                        "UPDATE harness_models SET lifecycle_status='deprecated', entitlement_status='deprecated' WHERE id=?",
+                        (r["id"],)
+                    )
 
         # 2. Local Antigravity CLI discovery
         try:
             import subprocess
             import re
-            out = subprocess.check_output(["agy", "models"], stderr=subprocess.PIPE, timeout=4).decode("utf-8")
+            out = subprocess.check_output(["agy", "models"], stderr=subprocess.PIPE, timeout=12).decode("utf-8")
             antigravity_sub = conn.execute("SELECT id FROM subscriptions WHERE provider='Google' AND plan_name LIKE '%Antigravity%'").fetchone()
             if antigravity_sub:
                 sub_id = antigravity_sub["id"]
                 gem_pool = conn.execute("SELECT id FROM quota_pools WHERE subscription_id=? AND name LIKE '%Gemini%'", (sub_id,)).fetchone()
                 claude_pool = conn.execute("SELECT id FROM quota_pools WHERE subscription_id=? AND name LIKE '%Claude%'", (sub_id,)).fetchone()
+                active_keys = set()
                 for line in out.splitlines():
                     line = re.sub(r'^[⠋⠙⠹⠸⠼⠴⠦⠧⠇\s]*Fetching available models\.\.\.', '', line).strip()
                     if not line:
@@ -228,13 +239,30 @@ def discover_local_environment() -> None:
                     if len(parts) >= 2:
                         model_key = parts[0].strip()
                         display_name = parts[1].strip()
+                        active_keys.add(model_key)
                         target_pool = gem_pool["id"] if ("gemini" in model_key and gem_pool) else (claude_pool["id"] if claude_pool else None)
                         if target_pool:
                             conn.execute(
-                                """INSERT OR IGNORE INTO harness_models(subscription_id,quota_pool_id,model_key,model_display_name,reasoning,speed,entitlement_status,source_evidence,last_verified)
-                                   VALUES(?,?,?,?,'default','standard','local_detected','discovered via agy models CLI',?)""",
+                                """INSERT INTO harness_models(subscription_id,quota_pool_id,model_key,model_display_name,reasoning,speed,entitlement_status,source_evidence,last_verified,lifecycle_status)
+                                   VALUES(?,?,?,?,'default','standard','local_detected','discovered via agy models CLI',?,'active')
+                                   ON CONFLICT(subscription_id,model_key,reasoning,speed) DO UPDATE SET
+                                     model_display_name=excluded.model_display_name,quota_pool_id=excluded.quota_pool_id,
+                                     last_verified=excluded.last_verified,lifecycle_status='active',entitlement_status='local_detected'""",
                                 (sub_id, target_pool, model_key, display_name, now),
                             )
+
+                # Prune and supersede unmeasured models no longer reported by agy models
+                for r in conn.execute("SELECT id, model_key, lifecycle_status FROM harness_models WHERE subscription_id=?", (sub_id,)).fetchall():
+                    m_key = r["model_key"]
+                    has_metrics = conn.execute("SELECT 1 FROM lane_metrics WHERE model_key=?", (m_key,)).fetchone()
+                    if m_key not in active_keys and r["lifecycle_status"] == "active" and not has_metrics:
+                        superseded_target = "claude-sonnet-5-5-medium" if "sonnet" in m_key else ("claude-opus-5-5-medium" if "opus" in m_key else None)
+                        conn.execute(
+                            """UPDATE harness_models
+                               SET lifecycle_status='superseded', entitlement_status='superseded', superseded_by=?
+                               WHERE id=?""",
+                            (superseded_target, r["id"])
+                        )
         except Exception:
             pass
 
