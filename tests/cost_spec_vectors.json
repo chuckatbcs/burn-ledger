@@ -1,0 +1,319 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "api_cost_evidence": "measured",
+        "api_cost_per_task": 0.006837425,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": 13.674850000000001,
+        "cost_per_pool": 2.3065384615384614,
+        "cost_spec_version": "1.0",
+        "leverage": 5.9287326996831755,
+        "pool_allocation_monthly": 9.995,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.0011532692307692307,
+        "tasks_per_pool": 2000.0,
+        "tasks_per_pool_evidence": "measured",
+        "tasks_per_pool_high": 4000.0,
+        "tasks_per_pool_low": 1333.3333333333333,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "attempts": 22,
+        "cache_rate": 0.075,
+        "completed": 20,
+        "five_hour_delta_pct": 1.0,
+        "input_rate": 0.75,
+        "monthly_price": 19.99,
+        "output_rate": 3.5,
+        "pool_weight": 0.5,
+        "tier": 2,
+        "tokens_per_completed": 7682.5,
+        "weekly_delta_pct": 1.0,
+        "window_type": "5h + weekly"
+      },
+      "name": "antigravity_gemini_flash_t2_measured"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "measured",
+        "api_cost_per_task": 0.26908716499999996,
+        "api_profile_tokens": 50000,
+        "api_value_per_pool": 53.817432999999994,
+        "cost_per_pool": 2.3065384615384614,
+        "cost_spec_version": "1.0",
+        "leverage": 23.332553910288475,
+        "pool_allocation_monthly": 9.995,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.011532692307692306,
+        "tasks_per_pool": 200.0,
+        "tasks_per_pool_evidence": "measured",
+        "tasks_per_pool_high": 210.52631578947367,
+        "tasks_per_pool_low": 190.47619047619048,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "attempts": 25,
+        "cache_rate": 0.5,
+        "completed": 20,
+        "five_hour_delta_pct": 20.0,
+        "input_rate": 5.0,
+        "monthly_price": 19.99,
+        "output_rate": 25.0,
+        "pool_weight": 0.5,
+        "tier": 3,
+        "tokens_per_completed": 44112.65,
+        "weekly_delta_pct": 10.0,
+        "window_type": "rolling_5h"
+      },
+      "name": "antigravity_opus_t3_measured"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.042,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": 150.0,
+        "cost_per_pool": 2.3065384615384614,
+        "cost_spec_version": "1.0",
+        "leverage": 65.03251625812906,
+        "pool_allocation_monthly": 9.995,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.0006458307692307693,
+        "tasks_per_pool": 3571.428571428571,
+        "tasks_per_pool_evidence": "est_calibrated",
+        "tasks_per_pool_high": 4642.857142857142,
+        "tasks_per_pool_low": 2499.9999999999995,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "input_rate": 3.0,
+        "monthly_price": 19.99,
+        "output_rate": 15.0,
+        "pool_budget": 150.0,
+        "pool_weight": 0.5,
+        "tier": 2,
+        "window_type": "5h + weekly"
+      },
+      "name": "antigravity_unmeasured_calibrated"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.042,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": 11.532692307692308,
+        "cost_per_pool": 2.3065384615384614,
+        "cost_spec_version": "1.0",
+        "leverage": 5.0,
+        "pool_allocation_monthly": 9.995,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.008400000000000001,
+        "tasks_per_pool": 274.58791208791206,
+        "tasks_per_pool_evidence": "est_prior",
+        "tasks_per_pool_high": 356.96428571428567,
+        "tasks_per_pool_low": 192.21153846153842,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "input_rate": 3.0,
+        "monthly_price": 19.99,
+        "output_rate": 15.0,
+        "pool_weight": 0.5,
+        "tier": 2,
+        "window_type": "5h + weekly"
+      },
+      "name": "antigravity_unmeasured_prior"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.0064,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": 1.6,
+        "cost_per_pool": 10.0,
+        "cost_spec_version": "1.0",
+        "leverage": 0.16,
+        "pool_allocation_monthly": 10.0,
+        "pool_cycles_per_month": 1.0,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.04,
+        "tasks_per_pool": 250.0,
+        "tasks_per_pool_evidence": "est_published_allowance",
+        "tasks_per_pool_high": 325.0,
+        "tasks_per_pool_low": 175.0,
+        "window_type": "monthly"
+      },
+      "input": {
+        "cache_rate": 0.2,
+        "input_rate": 0.5,
+        "monthly_price": 20.0,
+        "output_rate": 2.5,
+        "pool_weight": 0.5,
+        "tier": 2,
+        "window_type": "monthly"
+      },
+      "name": "cursor_composer_t2_allowance"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.0014,
+        "api_profile_tokens": 1000,
+        "api_value_per_pool": 0.35,
+        "cost_per_pool": 10.0,
+        "cost_spec_version": "1.0",
+        "leverage": 0.034999999999999996,
+        "pool_allocation_monthly": 10.0,
+        "pool_cycles_per_month": 1.0,
+        "pool_weight": 0.5,
+        "sub_cost_per_task": 0.04,
+        "tasks_per_pool": 250.0,
+        "tasks_per_pool_evidence": "est_published_allowance",
+        "tasks_per_pool_high": 325.0,
+        "tasks_per_pool_low": 175.0,
+        "window_type": "monthly"
+      },
+      "input": {
+        "input_rate": 1.0,
+        "monthly_price": 20.0,
+        "output_rate": 5.0,
+        "pool_weight": 0.5,
+        "speed": "fast",
+        "tier": 1,
+        "window_type": "monthly_billing"
+      },
+      "name": "cursor_haiku_fast_t1_allowance"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.028,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": 5.6000000000000005,
+        "cost_per_pool": 4.615384615384616,
+        "cost_spec_version": "1.0",
+        "leverage": 1.2133333333333334,
+        "pool_allocation_monthly": 20.0,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 1.0,
+        "sub_cost_per_task": 0.023076923076923078,
+        "tasks_per_pool": 200.0,
+        "tasks_per_pool_evidence": "measured",
+        "tasks_per_pool_high": 400.0,
+        "tasks_per_pool_low": 133.33333333333334,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "completed": 10,
+        "granularity_pct": 5.0,
+        "input_rate": 2.0,
+        "monthly_price": 20.0,
+        "output_rate": 10.0,
+        "pool_weight": 1.0,
+        "tier": 2,
+        "weekly_delta_pct": 5.0,
+        "window_type": "5h + possible weekly"
+      },
+      "name": "chatgpt_5h_quantized_5pct"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 0.0,
+        "api_profile_tokens": 10000,
+        "api_value_per_pool": null,
+        "cost_per_pool": 0.0,
+        "cost_spec_version": "1.0",
+        "leverage": null,
+        "pool_allocation_monthly": 0.0,
+        "pool_cycles_per_month": null,
+        "pool_weight": 1.0,
+        "sub_cost_per_task": null,
+        "tasks_per_pool": null,
+        "tasks_per_pool_evidence": "unmetered",
+        "tasks_per_pool_high": null,
+        "tasks_per_pool_low": null,
+        "window_type": "unmetered"
+      },
+      "input": {
+        "input_rate": 0.0,
+        "monthly_price": 0.0,
+        "output_rate": 0.0,
+        "pool_weight": 1.0,
+        "tier": 2,
+        "window_type": "unmetered"
+      },
+      "name": "local_unmetered"
+    },
+    {
+      "expected": {
+        "api_cost_evidence": "estimated",
+        "api_cost_per_task": 1.302,
+        "api_profile_tokens": 300000,
+        "api_value_per_pool": 23.07692307692308,
+        "cost_per_pool": 4.615384615384616,
+        "cost_spec_version": "1.0",
+        "leverage": 5.0,
+        "pool_allocation_monthly": 20.0,
+        "pool_cycles_per_month": 4.333333333333333,
+        "pool_weight": 1.0,
+        "sub_cost_per_task": 0.2604,
+        "tasks_per_pool": 17.72421127259837,
+        "tasks_per_pool_evidence": "est_prior",
+        "tasks_per_pool_high": 23.041474654377883,
+        "tasks_per_pool_low": 12.40694789081886,
+        "window_type": "rolling_5h_weekly"
+      },
+      "input": {
+        "cache_rate": 0.1,
+        "input_rate": 2.0,
+        "long_context_multipliers": {
+          "cache_read": 2.0,
+          "input": 2.0,
+          "output": 1.5
+        },
+        "monthly_price": 20.0,
+        "output_rate": 10.0,
+        "pool_weight": 1.0,
+        "tier": 4,
+        "window_type": "rolling_5h"
+      },
+      "name": "long_context_t4_multiplier"
+    }
+  ],
+  "weights": [
+    {
+      "expected": {
+        "a": 0.5,
+        "b": 0.5
+      },
+      "explicit": {},
+      "name": "equal_split_two",
+      "pool_ids": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "expected": {
+        "a": 0.5,
+        "b": 0.25,
+        "c": 0.25
+      },
+      "explicit": {
+        "a": 0.5
+      },
+      "name": "explicit_one_of_three",
+      "pool_ids": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  ]
+}

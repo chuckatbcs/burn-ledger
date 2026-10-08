@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Any
 
 from app.db import get_setting, query
+from app.services import cost_spec
 from app.services.availability import availability_for, infer_model_provider
 from app.services.enrichment import enrich_plan_rows
 from app.services.task_cost import calculate_task_cost
@@ -167,13 +168,26 @@ def _plan_rows() -> list[dict[str, Any]]:
           hm.lifecycle_status AS lifecycle_status,
           hm.superseded_by AS superseded_by,
           s.plan_name AS plan_name,
-          qp.name AS pool_name
+          hm.quota_pool_id AS quota_pool_id,
+          qp.name AS pool_name,
+          qp.reset_window AS reset_window
         FROM harness_models hm
         JOIN subscriptions s ON s.id=hm.subscription_id AND s.enabled=1
         LEFT JOIN quota_pools qp ON qp.id=hm.quota_pool_id
         """
     )
     return enrich_plan_rows(rows)
+
+
+def _compute_pool_weights() -> dict[Any, float]:
+    pool_rows = query("SELECT id, subscription_id FROM quota_pools")
+    sub_pools: dict[Any, list[Any]] = defaultdict(list)
+    for p in pool_rows:
+        sub_pools[p["subscription_id"]].append(p["id"])
+    weights: dict[Any, float] = {}
+    for sub_id, p_ids in sub_pools.items():
+        weights.update(cost_spec.pool_weights(p_ids))
+    return weights
 
 
 def _latest_metrics() -> dict[tuple[str, str], dict[str, Any]]:
@@ -239,6 +253,7 @@ def _route_candidate(
     metrics: dict[tuple[str, str], dict[str, Any]],
     mix: dict[str, float],
     basis: str,
+    weights: dict[Any, float] | None = None,
 ) -> dict[str, Any] | None:
     if row.get("lifecycle_status") in {"superseded", "deprecated"}:
         return None
@@ -308,6 +323,35 @@ def _route_candidate(
         selected_evidence = api_evidence
         ranking_bucket = 0
 
+    p_weights = weights if weights is not None else _compute_pool_weights()
+    p_id = row.get("quota_pool_id")
+    p_weight = p_weights.get(p_id, 1.0)
+    reset_window = row.get("reset_window") or ""
+    speed = "fast" if "fast" in (row.get("external_id") or "").lower() else "normal"
+
+    completed_val = float(metric["completed"]) if metric and metric.get("completed") else None
+    attempts_val = float(metric["attempts"]) if metric and metric.get("attempts") else None
+    tokens_val = float(metric["tokens_per_completed"]) if metric and metric.get("tokens_per_completed") else None
+    weekly_delta = float(metric["weekly_quota_delta_pct"]) if metric and metric.get("weekly_quota_delta_pct") else None
+    five_hour_delta = float(metric["visible_quota_delta_pct"]) if metric and metric.get("visible_quota_delta_pct") else None
+
+    econ = cost_spec.pool_economics(
+        tier=tier_def["tier"],
+        monthly_price=row.get("monthly_price"),
+        pool_weight=p_weight,
+        window_type=reset_window,
+        input_rate=row.get("input_per_million"),
+        output_rate=row.get("output_per_million"),
+        cache_rate=row.get("cache_read_per_million"),
+        speed=speed,
+        completed=completed_val,
+        attempts=attempts_val,
+        tokens_per_completed=tokens_val,
+        weekly_delta_pct=weekly_delta,
+        five_hour_delta_pct=five_hour_delta,
+        granularity_pct=1.0,
+    )
+
     return {
         "family_key": _canonical_family(row.get("external_id"), row.get("display_name")),
         "model_key": row.get("external_id"),
@@ -325,6 +369,15 @@ def _route_candidate(
         "availability_reason": availability.get("availability_reason"),
         "model_enabled": availability["model_enabled"],
         "provider_enabled": availability["provider_enabled"],
+        # Standardized cost spec economics
+        "cost_per_pool": round(econ["cost_per_pool"], 4) if econ["cost_per_pool"] is not None else None,
+        "tasks_per_pool": round(econ["tasks_per_pool"], 1) if econ.get("tasks_per_pool") is not None else None,
+        "tasks_per_pool_low": round(econ["tasks_per_pool_low"], 1) if econ.get("tasks_per_pool_low") is not None else None,
+        "tasks_per_pool_high": round(econ["tasks_per_pool_high"], 1) if econ.get("tasks_per_pool_high") is not None else None,
+        "tasks_per_pool_evidence": econ.get("tasks_per_pool_evidence"),
+        "api_value_per_pool": round(econ["api_value_per_pool"], 4) if econ.get("api_value_per_pool") is not None else None,
+        "leverage": round(econ["leverage"], 2) if econ.get("leverage") is not None else None,
+        "formatted_tasks_per_pool": cost_spec.format_tasks_per_pool(econ),
         # The legacy field remains the selected ranking value for UI/backward compatibility.
         "cost_per_completed_task": float(rank_value),
         "cost_evidence": selected_evidence,
@@ -398,6 +451,7 @@ def tier_recommendations(basis: str = "api") -> dict[str, Any]:
     mix = get_setting("catalog_token_mix", {"input": 0.70, "cache_read": 0.20, "output": 0.10})
     rows = _plan_rows()
     metrics = _latest_metrics()
+    pool_weights = _compute_pool_weights()
     tiers: list[dict[str, Any]] = []
 
     all_disabled_models: set[str] = set()
@@ -413,7 +467,7 @@ def tier_recommendations(basis: str = "api") -> dict[str, Any]:
             fit_score, _, fit_basis = _fit_for(row, tier_def["tier"])
             if fit_score == 1 and fit_basis == "inferred":
                 unresolved_fit += 1
-            c = _route_candidate(row, tier_def, metrics, mix, basis)
+            c = _route_candidate(row, tier_def, metrics, mix, basis, weights=pool_weights)
             if c:
                 candidates.append(c)
 

@@ -498,3 +498,24 @@ def test_v08_quota_basis_respects_availability():
         assert all(m['provider'] != 'Anthropic' for m in t2['top_models'])
         assert t2['changed_by_availability'] is True
         client.patch('/api/availability/provider/Anthropic', json={'enabled': True})
+
+
+def test_v10_standardized_pool_economics_in_tier_recommendations():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    with TestClient(app) as client:
+        data = client.get('/api/dashboard').json()['tier_recommendations']
+        t2 = next(t for t in data['tiers'] if t['key'] == 'tier2')
+        flash = next(m for m in t2['top_models'] if 'Gemini 3.8 Flash' in m['model_display_name'])
+        assert flash['cost_per_pool'] == 2.3065
+        assert flash['tasks_per_pool'] == 2000.0
+        assert flash['tasks_per_pool_evidence'] == 'measured'
+        assert '2,000' in flash['formatted_tasks_per_pool']
+        assert 'measured' in flash['formatted_tasks_per_pool']
+
+        composer = next(m for m in t2['top_models'] if 'Composer 2.5' in m['model_display_name'])
+        assert composer['cost_per_pool'] == 10.0
+        assert composer['tasks_per_pool'] == 250.0
+        assert composer['tasks_per_pool_evidence'] == 'est_published_allowance'
+        assert '250' in composer['formatted_tasks_per_pool']

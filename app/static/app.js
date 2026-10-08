@@ -121,6 +121,7 @@ function renderTierRecommendations(payload){
           <strong>${esc(m.model_display_name)}</strong>
           <small>${esc(m.plan_name||'plan route')} · ${esc(m.provider)}</small>
           <div class="rank-metric">${detail}</div>
+          <div class="rank-metric">Pool: <strong>${esc(m.pool_name||'Standard Pool')}</strong> · Cost/Pool: <strong>${m.cost_per_pool != null ? fmtMoney(m.cost_per_pool) : '—'}</strong> · Tasks/Pool (est): <strong>${m.formatted_tasks_per_pool || (m.tasks_per_pool != null ? fmtNum(m.tasks_per_pool, 0) : '—')}</strong></div>
           <div class="rank-metric">Evidence: ${qualityEvidenceBadge(m)}</div>
         </div>
         <div class="rank-compare">
@@ -135,6 +136,12 @@ function renderTierRecommendations(payload){
             <strong>${apiMain}</strong>
             <small>${m.api_cost_per_completed_task==null?'pricing unresolved':'same completed-task workload'}</small>
             ${apiEvidence}
+          </div>
+          <div class="rank-economy">
+            <span class="economy-label">Cost / Pool</span>
+            <strong>${m.cost_per_pool != null ? fmtMoney(m.cost_per_pool) : '—'}</strong>
+            <small>Tasks/Pool: ${m.formatted_tasks_per_pool ? esc(m.formatted_tasks_per_pool) : (m.tasks_per_pool != null ? fmtNum(m.tasks_per_pool, 0) : '—')}</small>
+            <span class="badge ${m.tasks_per_pool_evidence === 'measured' ? 'badge-measured' : 'badge'}">${m.tasks_per_pool_evidence === 'measured' ? 'measured pool' : (m.tasks_per_pool_evidence ? esc(m.tasks_per_pool_evidence) : 'est pool')}</span>
           </div>
         </div>
       </div>`;
