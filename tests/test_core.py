@@ -519,3 +519,35 @@ def test_v10_standardized_pool_economics_in_tier_recommendations():
         assert composer['tasks_per_pool'] == 250.0
         assert composer['tasks_per_pool_evidence'] == 'est_published_allowance'
         assert '250' in composer['formatted_tasks_per_pool']
+
+
+def test_v11_standardized_pool_economics_in_models_catalog():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    with TestClient(app) as client:
+        r = client.get('/api/models', params={'scope': 'plan', 'page_size': 100})
+        assert r.status_code == 200
+        data = r.json()
+        models = data['models']
+        assert len(models) > 0
+        flash_google = next((m for m in models if m['external_id'] == 'gemini-3.8-flash-medium' and 'Google' in m['plan_name']), None)
+        assert flash_google is not None
+        assert flash_google['cost_per_pool'] == 2.3065
+        assert flash_google['tasks_per_pool'] == 2000.0
+        assert flash_google['tasks_per_pool_evidence'] == 'measured'
+        assert flash_google['sub_cost_per_task'] is not None
+        assert flash_google['api_cost_per_task'] is not None
+        assert flash_google['api_value_per_pool'] is not None
+        assert flash_google['leverage'] is not None
+        assert '2,000' in flash_google['formatted_tasks_per_pool']
+
+        flash_cursor = next((m for m in models if 'gemini-3-8-flash' in m['external_id'] and 'Cursor' in m['plan_name']), None)
+        assert flash_cursor is not None
+        assert flash_cursor['cost_per_pool'] == 10.0
+
+        r_sorted = client.get('/api/models', params={'scope': 'plan', 'sort': 'cost_pool', 'direction': 'asc'})
+        assert r_sorted.status_code == 200
+        sorted_models = [m for m in r_sorted.json()['models'] if m['cost_per_pool'] is not None]
+        assert len(sorted_models) >= 2
+        assert sorted_models[0]['cost_per_pool'] <= sorted_models[1]['cost_per_pool']

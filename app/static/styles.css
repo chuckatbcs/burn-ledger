@@ -72,6 +72,11 @@ h2 { margin: 0; font: 700 clamp(24px, 3vw, 34px)/1 var(--display); letter-spacin
 .panel { border:1px solid var(--line); background:var(--panel); border-radius:var(--radius); box-shadow:0 8px 26px rgba(0,0,0,.16); min-width:0; }
 .panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line-soft); }.panel-head .eyebrow{margin-bottom:5px}
 .table-wrap { overflow:auto; scrollbar-gutter:stable; }.data-table { width:100%; border-collapse:collapse; min-width:720px; }
+.data-table.plan-table { min-width: 1040px; }
+.cost-pool-cell { color: #8da4ef; font-weight: 700; }
+.sub-cost-cell { color: #b8f0cb; font-weight: 700; }
+.api-cost-cell { color: #bce9f2; }
+.api-value-cell { color: #d0b0ff; }
 .data-table th { position:sticky; top:0; background:#101820; color:var(--muted); text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font:700 10px var(--mono); letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; }
 .data-table td { padding:11px 12px; border-bottom:1px solid var(--line-soft); font-size:12px; vertical-align:top; }.data-table tr:last-child td{border-bottom:0}.data-table tbody tr:hover{background:rgba(75,180,201,.025)}
 .mono { font-family:var(--mono); }.muted { color:var(--muted); }.right { text-align:right; }.nowrap{white-space:nowrap}

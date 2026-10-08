@@ -24,7 +24,10 @@ from app.services.availability import (
 from app.services.telemetry import import_telemetry, import_telemetry_inbox
 from app.services.enrichment import enrich_plan_rows
 from app.services.task_cost import DEFAULT_PROFILE, TASK_PROFILES, decorate_task_cost, profile_meta
-from app.services.tier_recommendations import tier_recommendations
+from app.services.tier_recommendations import (
+    tier_recommendations, _compute_pool_weights, _latest_metrics, _metric_for_tier
+)
+from app.services import cost_spec
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
@@ -180,8 +183,12 @@ def _catalog_plan_query() -> str:
           hm.entitlement_status AS entitlement_status,
           hm.lifecycle_status AS lifecycle_status,
           hm.superseded_by AS superseded_by,
+          hm.quota_pool_id AS quota_pool_id,
+          s.monthly_price AS monthly_price,
+          s.currency AS currency,
           s.plan_name AS plan_name,
-          qp.name AS pool_name
+          qp.name AS pool_name,
+          qp.reset_window AS reset_window
         FROM harness_models hm
         JOIN subscriptions s ON s.id=hm.subscription_id AND s.enabled=1
         LEFT JOIN quota_pools qp ON qp.id=hm.quota_pool_id
@@ -199,6 +206,12 @@ SORT_MAP = {
     "seen": "last_seen_at",
     "plan": "plan_name",
     "task_cost": "task_cost_per_task",
+    "cost_pool": "cost_per_pool",
+    "tasks_pool": "tasks_per_pool",
+    "tasks_month": "tasks_per_month",
+    "sub_cost": "sub_cost_per_task",
+    "api_cost": "api_cost_per_task",
+    "api_value": "api_value_per_pool",
 }
 
 
@@ -222,6 +235,55 @@ def models(
 
     if scope == "plan":
         base_rows = decorate_task_cost(enrich_plan_rows(query(_catalog_plan_query())), task_profile, cost_mix)
+        p_weights = _compute_pool_weights()
+        metrics = _latest_metrics()
+        tier_num = {"micro": 1, "standard": 2, "long_horizon": 3, "massive_context": 4}.get(task_profile, 2)
+
+        for r in base_rows:
+            p_id = r.get("quota_pool_id")
+            p_weight = p_weights.get(p_id, 1.0)
+            reset_window = r.get("reset_window") or ""
+            speed = "fast" if "fast" in (r.get("external_id") or "").lower() else "normal"
+            metric = _metric_for_tier(metrics, r.get("external_id"), tier_num)
+
+            completed_val = float(metric["completed"]) if metric and metric.get("completed") else None
+            attempts_val = float(metric["attempts"]) if metric and metric.get("attempts") else None
+            tokens_val = float(metric["tokens_per_completed"]) if metric and metric.get("tokens_per_completed") else None
+            weekly_delta = float(metric["weekly_quota_delta_pct"]) if metric and metric.get("weekly_quota_delta_pct") else None
+            five_hour_delta = float(metric["visible_quota_delta_pct"]) if metric and metric.get("visible_quota_delta_pct") else None
+
+            econ = cost_spec.pool_economics(
+                tier=tier_num,
+                monthly_price=r.get("monthly_price"),
+                pool_weight=p_weight,
+                window_type=reset_window,
+                input_rate=r.get("input_per_million"),
+                output_rate=r.get("output_per_million"),
+                cache_rate=r.get("cache_read_per_million"),
+                speed=speed,
+                completed=completed_val,
+                attempts=attempts_val,
+                tokens_per_completed=tokens_val,
+                weekly_delta_pct=weekly_delta,
+                five_hour_delta_pct=five_hour_delta,
+                granularity_pct=1.0,
+                long_context_multipliers=r.get("long_context_multipliers"),
+            )
+            r["cost_per_pool"] = round(econ["cost_per_pool"], 4) if econ["cost_per_pool"] is not None else None
+            r["tasks_per_pool"] = round(econ["tasks_per_pool"], 1) if econ.get("tasks_per_pool") is not None else None
+            r["tasks_per_pool_low"] = round(econ["tasks_per_pool_low"], 1) if econ.get("tasks_per_pool_low") is not None else None
+            r["tasks_per_pool_high"] = round(econ["tasks_per_pool_high"], 1) if econ.get("tasks_per_pool_high") is not None else None
+            r["tasks_per_pool_evidence"] = econ.get("tasks_per_pool_evidence")
+            cycles = econ.get("pool_cycles_per_month") or 4.0
+            t_pool = econ.get("tasks_per_pool")
+            tasks_month = (t_pool * cycles) if t_pool is not None else None
+            r["tasks_per_month"] = round(tasks_month, 0) if tasks_month is not None else None
+            r["sub_cost_per_task"] = round(econ["sub_cost_per_task"], 4) if econ.get("sub_cost_per_task") is not None else None
+            r["api_cost_per_task"] = round(econ["api_cost_per_task"], 4) if econ.get("api_cost_per_task") is not None else None
+            r["api_value_per_pool"] = round(econ["api_value_per_pool"], 4) if econ.get("api_value_per_pool") is not None else None
+            r["leverage"] = round(econ["leverage"], 2) if econ.get("leverage") is not None else None
+            r["formatted_tasks_per_pool"] = cost_spec.format_tasks_per_pool(econ)
+
         providers_all = sorted({r.get("provider") for r in base_rows if r.get("provider")})
         sources_all = sorted({r.get("plan_name") for r in base_rows if r.get("plan_name")})
 
@@ -240,6 +302,8 @@ def models(
             "provider": "provider", "model": "display_name", "source": "source", "context": "context_window",
             "input": "input_per_million", "cache": "cache_read_per_million", "output": "output_per_million",
             "seen": "catalog_last_seen_at", "plan": "plan_name", "task_cost": "task_cost_per_task",
+            "cost_pool": "cost_per_pool", "tasks_pool": "tasks_per_pool", "tasks_month": "tasks_per_month",
+            "sub_cost": "sub_cost_per_task", "api_cost": "api_cost_per_task", "api_value": "api_value_per_pool",
         }
         field = key_map.get(sort, "provider")
         reverse = direction == "desc"
@@ -283,6 +347,8 @@ def models(
         "provider": "provider", "model": "display_name", "source": "source", "context": "context_window",
         "input": "input_per_million", "cache": "cache_read_per_million", "output": "output_per_million",
         "seen": "last_seen_at", "plan": "plan_name", "task_cost": "task_cost_per_task",
+        "cost_pool": "cost_per_pool", "tasks_pool": "tasks_per_pool", "tasks_month": "tasks_per_month",
+        "sub_cost": "sub_cost_per_task", "api_cost": "api_cost_per_task", "api_value": "api_value_per_pool",
     }
     field = key_map.get(sort, "provider")
     reverse = direction == "desc"

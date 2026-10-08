@@ -262,7 +262,95 @@ function catalogDataMeta(m){
 function renderModelTable(models){
   if(!models.length){$('#modelsTableWrap').innerHTML='<div class="empty-state">No models match these filters.</div>';return;}
   const showAvailability=state.modelQuery.scope==='plan';
-  $('#modelsTableWrap').innerHTML=`<table class="data-table"><thead><tr><th>${sortButton('Provider','provider')}</th><th>${sortButton('Model','model')}</th><th>${sortButton(showAvailability?'Plan':'Source',showAvailability?'plan':'source')}</th>${showAvailability?'<th>Routing</th>':''}<th>${sortButton('Context','context')}</th><th>${sortButton('Input / M','input')}</th><th>${sortButton('Cache read / M','cache')}</th><th>${sortButton('Output / M','output')}</th><th>${sortButton('Cost / task','task_cost')}</th><th>${sortButton('Last verified','seen')}</th></tr></thead><tbody>${models.map(m=>`<tr class="${showAvailability&&!m.available?'row-disabled':''}"><td>${esc(m.provider||'—')}</td><td><strong>${esc(m.display_name||m.external_id)}</strong><div class="muted mono">${esc(m.external_id)}</div>${m.lifecycle_status&&m.lifecycle_status!=='active'?`<div class="catalog-data catalog-data-warning">${esc(m.lifecycle_status)}${m.superseded_by?` → ${esc(m.superseded_by)}`:''}</div>`:''}${m.pool_name?`<div class="muted">${esc(m.pool_name)}</div>`:''}${catalogDataMeta(m)}</td><td><span class="badge ${showAvailability?'badge-official':m.source==='cursor_official'?'badge-official':'badge-warning'}">${esc(m.plan_name||m.source||'—')}</span></td>${showAvailability?`<td>${availabilityButton({scope:'model',key:m.external_id,enabled:!!m.model_enabled,label:m.model_enabled?'Model enabled':'Model disabled',meta:m.provider_enabled?(m.model_enabled?'In rotation':'Excluded'):'Excluded by provider'})}</td>`:''}<td class="mono">${m.context_window==null?'—':fmtNum(m.context_window,0)}</td><td class="mono">${m.input_per_million==null?'—':fmtMoney(m.input_per_million)}</td><td class="mono">${m.cache_read_per_million==null?'—':fmtMoney(m.cache_read_per_million)}</td><td class="mono">${m.output_per_million==null?'—':fmtMoney(m.output_per_million)}</td><td class="mono task-cost-cell"><strong>${fmtTaskCost(m.task_cost_per_task)}</strong>${taskCostMeta(m)}</td><td class="mono muted">${esc(((m.catalog_last_seen_at||m.last_seen_at)||'—').slice(0,19))}</td></tr>`).join('')}</tbody></table>`;
+  if(showAvailability){
+    $('#modelsTableWrap').innerHTML=`<table class="data-table plan-table"><thead><tr>
+      <th>${sortButton('Provider','provider')}</th>
+      <th>${sortButton('Model','model')}</th>
+      <th>${sortButton('Plan & Pool','plan')}</th>
+      <th>Routing</th>
+      <th>${sortButton('Cost / Pool','cost_pool')}</th>
+      <th>${sortButton('Tasks / Pool (est)','tasks_pool')}</th>
+      <th>${sortButton('Tasks / Mo','tasks_month')}</th>
+      <th>${sortButton('Sub Cost / Task','sub_cost')}</th>
+      <th>${sortButton('Raw API Cost','api_cost')}</th>
+      <th>${sortButton('API Val / Pool','api_value')}</th>
+      <th>${sortButton('Last verified','seen')}</th>
+    </tr></thead><tbody>${models.map(m=>{
+      const evidenceBadge = m.tasks_per_pool_evidence === 'measured'
+        ? '<span class="badge badge-measured">meas</span>'
+        : m.tasks_per_pool_evidence === 'unmetered'
+        ? '<span class="badge badge-official">unmetered</span>'
+        : (m.tasks_per_pool != null ? '<span class="badge badge-warning">est</span>' : '');
+      const rangeStr = (m.tasks_per_pool_low != null && m.tasks_per_pool_high != null && m.tasks_per_pool_low !== m.tasks_per_pool_high)
+        ? `<div class="muted mono" style="font-size:10px;">${fmtNum(m.tasks_per_pool_low, 0)}–${fmtNum(m.tasks_per_pool_high, 0)}</div>`
+        : '';
+      const costPoolStr = m.cost_per_pool != null ? fmtMoney(m.cost_per_pool) : '—';
+      const apiValStr = m.api_value_per_pool != null ? fmtMoney(m.api_value_per_pool) : '—';
+      const leverageStr = m.leverage != null ? `<div class="muted mono" style="font-size:10px;">${fmtNum(m.leverage, 1)}×</div>` : '';
+      const subCostStr = m.sub_cost_per_task != null ? fmtTaskCost(m.sub_cost_per_task) : '—';
+      const rawApiStr = m.api_cost_per_task != null ? fmtTaskCost(m.api_cost_per_task) : (m.task_cost_per_task != null ? fmtTaskCost(m.task_cost_per_task) : '—');
+      const tokenRatesStr = (m.input_per_million != null && m.output_per_million != null)
+        ? `<div class="muted mono" style="font-size:10px;">${fmtMoney(m.input_per_million)} / ${fmtMoney(m.output_per_million)}</div>`
+        : '';
+      return `<tr class="${!m.available?'row-disabled':''}">
+        <td>${esc(m.provider||'—')}</td>
+        <td>
+          <strong>${esc(m.display_name||m.external_id)}</strong>
+          <div class="muted mono">${esc(m.external_id)}</div>
+          ${m.lifecycle_status&&m.lifecycle_status!=='active'?`<div class="catalog-data catalog-data-warning">${esc(m.lifecycle_status)}${m.superseded_by?` → ${esc(m.superseded_by)}`:''}</div>`:''}
+          ${catalogDataMeta(m)}
+        </td>
+        <td>
+          <span class="badge badge-official">${esc(m.plan_name||'—')}</span>
+          ${m.pool_name?`<div class="muted" style="margin-top:2px;">${esc(m.pool_name)}</div>`:''}
+        </td>
+        <td>
+          ${availabilityButton({scope:'model',key:m.external_id,enabled:!!m.model_enabled,label:m.model_enabled?'Model enabled':'Model disabled',meta:m.provider_enabled?(m.model_enabled?'In rotation':'Excluded'):'Excluded by provider'})}
+        </td>
+        <td class="mono cost-pool-cell">${costPoolStr}</td>
+        <td class="mono">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <strong>${m.tasks_per_pool != null ? fmtNum(m.tasks_per_pool, 0) : (m.tasks_per_pool_evidence === 'unmetered' ? '∞' : '—')}</strong>
+            ${evidenceBadge}
+          </div>
+          ${rangeStr}
+        </td>
+        <td class="mono">${m.tasks_per_month != null ? fmtNum(m.tasks_per_month, 0) : '—'}</td>
+        <td class="mono sub-cost-cell">${subCostStr}</td>
+        <td class="mono api-cost-cell">
+          <strong>${rawApiStr}</strong>
+          ${tokenRatesStr}
+        </td>
+        <td class="mono api-value-cell">
+          <strong>${apiValStr}</strong>
+          ${leverageStr}
+        </td>
+        <td class="mono muted">${esc(((m.catalog_last_seen_at||m.last_seen_at)||'—').slice(0,19))}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  } else {
+    $('#modelsTableWrap').innerHTML=`<table class="data-table"><thead><tr>
+      <th>${sortButton('Provider','provider')}</th>
+      <th>${sortButton('Model','model')}</th>
+      <th>${sortButton('Source','source')}</th>
+      <th>${sortButton('Context','context')}</th>
+      <th>${sortButton('Input / M','input')}</th>
+      <th>${sortButton('Cache read / M','cache')}</th>
+      <th>${sortButton('Output / M','output')}</th>
+      <th>${sortButton('Cost / task','task_cost')}</th>
+      <th>${sortButton('Last verified','seen')}</th>
+    </tr></thead><tbody>${models.map(m=>`<tr>
+      <td>${esc(m.provider||'—')}</td>
+      <td><strong>${esc(m.display_name||m.external_id)}</strong><div class="muted mono">${esc(m.external_id)}</div>${m.lifecycle_status&&m.lifecycle_status!=='active'?`<div class="catalog-data catalog-data-warning">${esc(m.lifecycle_status)}${m.superseded_by?` → ${esc(m.superseded_by)}`:''}</div>`:''}${m.pool_name?`<div class="muted">${esc(m.pool_name)}</div>`:''}${catalogDataMeta(m)}</td>
+      <td><span class="badge ${m.source==='cursor_official'?'badge-official':'badge-warning'}">${esc(m.source||'—')}</span></td>
+      <td class="mono">${m.context_window==null?'—':fmtNum(m.context_window,0)}</td>
+      <td class="mono">${m.input_per_million==null?'—':fmtMoney(m.input_per_million)}</td>
+      <td class="mono">${m.cache_read_per_million==null?'—':fmtMoney(m.cache_read_per_million)}</td>
+      <td class="mono">${m.output_per_million==null?'—':fmtMoney(m.output_per_million)}</td>
+      <td class="mono task-cost-cell"><strong>${fmtTaskCost(m.task_cost_per_task)}</strong>${taskCostMeta(m)}</td>
+      <td class="mono muted">${esc(((m.catalog_last_seen_at||m.last_seen_at)||'—').slice(0,19))}</td>
+    </tr>`).join('')}</tbody></table>`;
+  }
 }
 async function loadModels(){
   const q=state.modelQuery; updateCatalogUrl(); syncModelControls();
@@ -272,7 +360,11 @@ async function loadModels(){
     const r=await api(url,{signal:modelAbort.signal}); state.models=r.models; q.page=r.page; renderProviderToggles(r.availability_providers||[]);
     const providerCurrent=q.provider; $('#providerFilter').innerHTML='<option value="">All providers</option>'+r.providers.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join(''); $('#providerFilter').value=providerCurrent;
     const sourceCurrent=q.source; const sourceLabel=q.scope==='plan'?'All plans':'All sources'; $('#sourceFilter').innerHTML=`<option value="">${sourceLabel}</option>`+r.sources.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join(''); $('#sourceFilter').value=sourceCurrent;
-    renderModelTable(r.models); const profile=r.task_cost_profile||{}; $('#taskCostBasis').textContent=`Cost/task: ${profile.label||q.taskProfile} · ${fmtNum(profile.billable_tokens,0)} billable tokens · ${Math.round((profile.mix?.input||0)*100)}% input / ${Math.round((profile.mix?.cache_read||0)*100)}% cache / ${Math.round((profile.mix?.output||0)*100)}% output · API-equivalent, not subscription cost`; $('#catalogResultCount').textContent=`${fmtNum(r.total,0)} result${r.total===1?'':'s'}`; $('#catalogSortState').textContent=`Sorted by ${q.sort} · ${q.direction}`; $('#pageStatus').textContent=`Page ${r.page} of ${r.total_pages}`; $('#prevPage').disabled=r.page<=1; $('#nextPage').disabled=r.page>=r.total_pages;
+    renderModelTable(r.models); const profile=r.task_cost_profile||{};
+    $('#taskCostBasis').textContent=q.scope==='plan'
+      ? `Standardized economics: ${profile.label||q.taskProfile} tier (${fmtNum(profile.billable_tokens,0)} tokens) · Pool-allocated subscription vs API-equivalent leverage`
+      : `Cost/task: ${profile.label||q.taskProfile} · ${fmtNum(profile.billable_tokens,0)} billable tokens · ${Math.round((profile.mix?.input||0)*100)}% input / ${Math.round((profile.mix?.cache_read||0)*100)}% cache / ${Math.round((profile.mix?.output||0)*100)}% output · API-equivalent, not subscription cost`;
+    $('#catalogResultCount').textContent=`${fmtNum(r.total,0)} result${r.total===1?'':'s'}`; $('#catalogSortState').textContent=`Sorted by ${q.sort} · ${q.direction}`; $('#pageStatus').textContent=`Page ${r.page} of ${r.total_pages}`; $('#prevPage').disabled=r.page<=1; $('#nextPage').disabled=r.page>=r.total_pages;
     syncModelControls(); updateCatalogUrl();
   }catch(e){ if(e.name!=='AbortError')$('#modelsTableWrap').innerHTML=`<div class="error-state">${esc(e.message)}</div>`; }
 }
